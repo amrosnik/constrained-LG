@@ -28,8 +28,11 @@ class Config {
           double calc_mag_layer(int z);
           double calc_staggered_mag(int z1, int z2);
           double calc_avg_stagmag();
-          void monte_carlo(int nsweeps);
+          double calc_mag_odd();
+          double calc_mag_even();
+          void monte_carlo(int nsweeps,string name);
           void print_config(string name);
+          //void print_mag(int nsw,string name);
  
           private:
 

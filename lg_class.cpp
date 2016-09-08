@@ -245,6 +245,34 @@ double Config::calc_staggered_mag(int zcoord1, int zcoord2) {
    return m_stag;
 }
 
+double Config::calc_mag_odd() { 
+  int i,j,k;
+  double mag_odd;
+  mag_odd = 0;
+  for (i=0; i<N; i++) { 
+      for (j=0; j<N; j++) {
+          for (k=1; k<N; k+=2) { // only increment on odd layers!
+             mag_odd += coords[i][j][k];
+          }      
+      }      
+  }  
+  return mag_odd;
+}
+
+double Config::calc_mag_even() { 
+  int i,j,k;
+  double mag_even;
+  mag_even = 0;
+  for (i=0; i<N; i++) { 
+      for (j=0; j<N; j++) {
+          for (k=0; k<N; k+=2) { // only increment on even layers!
+             mag_even += coords[i][j][k];
+          }      
+      }      
+  }  
+  return mag_even;
+}
+
 double Config::calc_avg_stagmag() {
   int i,count;
   double avg_stagmag,stag;
@@ -260,7 +288,7 @@ double Config::calc_avg_stagmag() {
   return avg_stagmag;
 }
 
-void Config::monte_carlo(int nsweeps) { 
+void Config::monte_carlo(int nsweeps,string name) { 
     // Monte Carlo simulation  
     int seed;
     seed = 1098796; // change as desired...maybe make this randomly generated?
@@ -270,6 +298,15 @@ void Config::monte_carlo(int nsweeps) {
     int accept = 0;
     avg_count = 0;
     double avg_m = 0;
+    double avg_m2 = 0;
+    double flucts = 0;
+    mag = 0; 
+    ofstream mag_out; // average occupancy output file
+    mag_out.open("avg_mag_tot_"+name+".out",ios::out);
+    ofstream mag_odd_out; // average odd layer occupancy output file
+    mag_odd_out.open("avg_mag_odd_"+name+".out",ios::out);
+    ofstream mag_even_out; // average even layer occupancy output file
+    mag_even_out.open("avg_mag_even_"+name+".out",ios::out);
 
     for (int sweep = 0; sweep < nsweeps; sweep++) {
         for (int step = 0; step < N; step++) {
@@ -281,20 +318,33 @@ void Config::monte_carlo(int nsweeps) {
          }
   
          // calculate magnetization/density
-         if (sweep % 100 == 0) {
+         if ((sweep > 150000) && (sweep % 1000 == 0)) {
+            mag_out << sweep << "  " << (1/(double)(N*N*N))*calc_mag() << endl;
+            mag_odd_out << sweep << "  " << (1/(double)(N*N*0.5*N))*calc_mag_odd() << endl; // only do half of z
+            mag_even_out << sweep << "  " << (1/(double)(N*N*0.5*N))*calc_mag_even() << endl; // only do half of z
+         }      
+         if ((sweep > 150000) && (sweep % 20000 == 0)) {
+            print_config(name+"_"+to_string(sweep));
             mag = calc_mag();
             avg_m += mag;
+            avg_m2 += mag*mag;
             avg_count += 1;
-            //fprintf(misc,"%d %f\n",sweep,avg_m);
-            //cout << sweep << " " << avg_m/((double)N*N*N*avg_count) << "\n";
          }      
     }
     // average magnetization
-    avg_m /= avg_count*(double)(N*N*N); 
+    avg_m /= (double)avg_count; 
+    avg_m2 /= (double)avg_count; 
+    flucts =(1/(double)(N*N*N))*(avg_m2 - avg_m);
+    //flucts = (avg_m2 - avg_m);
+    avg_m /= (double)(N*N*N); 
+    cout << "Average total mag: " << avg_m << "\n";
+    cout << "Average fluctuations: " << flucts << "\n";
     //fprintf(misc,"%d %f\n",avg_count,avg_m);
-    printf("%f %d %f\n",temp,avg_count,avg_m);
+    //printf("%f %d %f\n",temp,avg_count,avg_m);
+    mag_out.close();
+    mag_odd_out.close();
+    mag_even_out.close();
 }
-
 
 void Config::print_config(string name){
    // NOTE: This prints a slice of the XZ plane at y = 0. 
